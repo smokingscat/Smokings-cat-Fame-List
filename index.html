@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Smokings Simulator</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            background: #0a0a0a;
+            margin: 0;
+            padding: 20px;
+            font-family: 'Courier New', 'VT323', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 500px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        
+        /* Пиксельный стиль */
+        .pixel-title {
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            color: #0f0;
+            text-shadow: 2px 2px 0 #0a0;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            background: #000;
+            padding: 10px;
+            border: 3px solid #0f0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        /* ASCII кот */
+        .cat-container {
+            background: #000;
+            border: 4px solid #0f0;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: transform 0.05s linear;
+            position: relative;
+        }
+        
+        .cat-container:active {
+            transform: scale(0.98);
+        }
+        
+        .cat-ascii {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.2;
+            display: inline-block;
+            white-space: pre;
+            color: #0f0;
+            text-shadow: 0 0 2px currentColor;
+            transition: color 0.1s ease;
+        }
+        
+        /* Анимация дыма */
+        .smoke-particle {
+            position: absolute;
+            font-family: monospace;
+            font-size: 20px;
+            pointer-events: none;
+            animation: smokeFloat 0.6s ease-out forwards;
+            z-index: 100;
+        }
+        
+        @keyframes smokeFloat {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(30px, -60px) scale(2);
+            }
+        }
+        
+        /* Пиксельные кнопки */
+        .pixel-btn {
+            background: #000;
+            border: 2px solid #0f0;
+            color: #0f0;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.05s linear;
+            margin: 5px;
+        }
+        
+        .pixel-btn:active {
+            transform: translate(2px, 2px);
+            background: #0f0;
+            color: #000;
+        }
+        
+        /* Карточки статистики */
+        .stats-card {
+            background: #000;
+            border: 2px solid #0f0;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .stats-text {
+            color: #0f0;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+            margin: 5px 0;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        /* Магазин */
+        .shop-item {
+            background: #000;
+            border: 2px solid #0f0;
+            padding: 10px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: all 0.05s linear;
+        }
+        
+        .shop-item:active {
+            transform: translate(2px, 2px);
+        }
+        
+        .shop-name {
+            color: #0f0;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        
+        .shop-price {
+            color: #ff0;
+            font-size: 11px;
+        }
+        
+        .shop-power {
+            color: #f66;
+            font-size: 11px;
+        }
+        
+        /* Промокод */
+        .promo-input {
+            background: #000;
+            border: 2px solid #0f0;
+            color: #0f0;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            width: 60%;
+            margin: 5px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .message {
+            color: #0f0;
+            text-align: center;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        .error {
+            color: #f00;
+        }
+        
+        /* Табы */
+        .tab-bar {
+            display: flex;
+            margin: 20px 0 10px;
+            border-bottom: 2px solid #0f0;
+        }
+        
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .tab.active {
+            background: #0f0;
+            color: #000;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .leaderboard-item {
+            color: #0f0;
+            font-size: 12px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="pixel-title">SMOKINGS SIMULATOR</div>
+    
+    <div class="cat-container" id="catClicker">
+        <pre class="cat-ascii" id="catSprite">
+      ▄▄▄▄▄▄▄▄▄▄▄
+    ▄█░░░░░░░░░░░█▄
+   █░░░░░░░░░░░░░░░█
+   █░░░░░░░░░░░░░░░█
+   █░████░░░░████░░█
+   █░████░░░░████░░█
+   █░░░░░░░░░░░░░░░█
+   █░░░░░░░░░░░░░░░█
+    ██░░░░░░░░░░░██
+      ███████████
+         ██  ██
+         ██  ██
+         ██  ██
+          ▀▀  ▀▀
+          🚬
+        </pre>
+    </div>
+    
+    <div class="stats-card">
+        <div class="stats-text">💨 В лёгких: <span id="clicks">0</span> / <span id="capacity">30</span></div>
+        <div class="stats-text">🏆 Всего вдохов: <span id="totalClicks">0</span></div>
+        <div class="stats-text">⚡ Сила вдоха: +<span id="clickPower">1</span></div>
+        <div class="stats-text">📦 Множитель стадии: x<span id="stageMult">1</span></div>
+        <div class="stats-text">🚬 Сигарета: <span id="cigName">Бычок</span> (+<span id="cigPower">1</span>)</div>
+        <div class="stats-text">🫁 Лёгкие: <span id="lungName">Лёгкие новорождённого</span></div>
+        <div class="stats-text">🌟 Стадия: <span id="stage">0</span> / 6</div>
+    </div>
+    
+    <div class="grid-2">
+        <div class="pixel-btn" id="sellBtn">💨 ПРОДАТЬ</div>
+        <div class="pixel-btn" id="promoBtn">🎁 ПРОМОКОД</div>
+    </div>
+    
+    <div class="tab-bar">
+        <div class="tab active" data-tab="shop">🛒 МАГАЗИН</div>
+        <div class="tab" data-tab="lungs">🫁 ЛЁГКИЕ</div>
+        <div class="tab" data-tab="stages">🌟 СТАДИИ</div>
+        <div class="tab" data-tab="leaderboard">🏆 ТОП</div>
+    </div>
+    
+    <div id="tab-shop" class="tab-content active"><div id="shopList"></div></div>
+    <div id="tab-lungs" class="tab-content"><div id="lungsList"></div></div>
+    <div id="tab-stages" class="tab-content"><div id="stagesList"></div></div>
+    <div id="tab-leaderboard" class="tab-content">
+        <div id="leaderboardClicks"></div>
+        <div style="margin-top: 20px;"></div>
+        <div id="leaderboardStages"></div>
+    </div>
+    
+    <div id="promoPopup" class="hidden" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #000; border: 3px solid #0f0; padding: 20px; z-index: 1000; width: 80%; max-width: 300px;">
+        <div class="stats-text" style="margin-bottom: 10px;">ВВЕДИ ПРОМОКОД</div>
+        <input type="text" id="promoCode" class="promo-input" placeholder="GETTO">
+        <div class="grid-2" style="margin-top: 10px;">
+            <div class="pixel-btn" id="promoSubmit">АКТИВИРОВАТЬ</div>
+            <div class="pixel-btn" id="promoClose">ЗАКРЫТЬ</div>
+        </div>
+    </div>
+    
+    <div id="message" class="message"></div>
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    tg.enableClosingConfirmation();
+    
+    let playerData = {
+        clicks: 0,
+        total_clicks: 0,
+        stage: 0,
+        cigarette: 1,
+        lung: 1,
+        items_cigarettes: [1],
+        items_lungs: [1],
+        promo_used: false
+    };
+    
+    // Данные сигарет (50 шт)
+    const cigNames = [
+        "🚬 Бычок", "🚬 Прима", "🚬 Беломор", "🚬 Честер", "🚬 LM",
+        "🚬 Кент", "🚬 Мальборо", "🚬 Винстон", "🚬 Кэмел", "🚬 Ротманс",
+        "🚬 Парламент", "🚬 Монте Карло", "🚬 Давидофф", "🚬 Салем", "🚬 Мурatti",
+        "🚬 Собрание", "🚬 Донc", "🚬 Галуаз", "🚬 Житан", "🚬 Лаки Страйк",
+        "🚬 Бонд", "🚬 Мальборо Голд", "🚬 Винстон Икс", "🚬 Кент Нанолайт", "🚬 Ротманс Деми",
+        "🚬 Афганка", "🚬 Космос", "🚬 Винстон Блю", "🚬 Парламент Аква", "🚬 Данхилл",
+        "🚬 Собрание", "🚬 Корона", "🚬 Петр I", "🚬 Русский Стиль", "🚬 Ява Золотая",
+        "🚬 Тройка", "🚬 Столичные", "🚬 Герцеговина Флор", "🚬 Золотое Руно", "🚬 Нео",
+        "🚬 Эссе", "🚬 Вог", "🚬 Карелия", "🚬 Максим", "🚬 Филип Моррис",
+        "🚬 Честерфилд", "🚬 Кэмел Классик", "🚬 LM Синий", "🚬 Парламент Найт", "🚬 Мальборо Айс"
+    ];
+    
+    const cigPrices = [
+        0,15,45,90,187.5,315,600,1200,2150,3475,5275,8375,12750,19800,29250,44250,75500,111000,208000,355000,
+        1212000,2325000,4025000,9800000,18900000,30250000,105300000,193200000,340000000,570000000,887500000,
+        5350000000,8175000000,13400000000,19670000000,29000000000,212500000000,310000000000,442500000000,600000000000,
+        5390000000000,8240000000000,12190000000000,17900000000000,25800000000000,140000000000000,315000000000000,
+        444000000000000,621000000000000,925000000000000
+    ];
+    
+    const cigPowers = [
+        1,2,3,5,7,10,16,24,33,44,62,85,110,140,185,280,370,555,790,1010,1550,2240,4090,6300,8450,10000,16100,
+        25200,36300,49400,69500,95590,142700,191800,260800,341000,465000,623000,794000,1000000,1310000,1700000,
+        2210000,2880000,3740000,4860000,6320000,8220000,10690000,13900000
+    ];
+    
+    const cigarettes = [];
+    for (let i = 0; i < 50; i++) {
+        cigarettes.push({id: i+1, name: cigNames[i], price: cigPrices[i], power: cigPowers[i]});
+    }
+    
+    // Лёгкие (38 шт)
+    const lungNames = [
+        "🫁 Новорождённого", "🫁 Детские", "🫁 Подростка", "🫁 Юношеские", "🫁 Студента",
+        "🫁 Офисные", "🫁 Спортсмена", "🫁 Бегуна", "🫁 Пловца", "🫁 Велосипедиста",
+        "🫁 Лыжника", "🫁 Боксёра", "🫁 Бойца", "🫁 Воина", "🫁 Гладиатора",
+        "🫁 Рыцаря", "🫁 Викинга", "🫁 Берсерка", "🫁 Героя", "🫁 Кузнеца",
+        "🫁 Пожарного", "🫁 Ныряльщика", "🫁 Альпиниста", "🫁 Силача", "🫁 Стальные",
+        "🫁 Титан", "🫁 Адамантовые", "🫁 Мифриловые", "🫁 Дракона", "🫁 Великана",
+        "🫁 Титана", "🫁 Бессмертного", "🫁 Божественные", "🫁 Аватара", "🫁 Полубога",
+        "🫁 Бога", "🫁 Творца", "🫁 Вселенной"
+    ];
+    
+    const lungPrices = [
+        0,15,25,75,162.5,375,800,2125,3000,4250,12500,32500,82500,200000,350000,1750000,5000000,25000000,
+        437500000,750000000,1625000000,4000000000,30000000000,37500000000,87500000000,500000000000,7059000000000,
+        15900000000000,33600000000000,315000000000000,621000000000000,1200000000000000,12300000000000000,
+        25000000000000000,49000000000000000,600000000000000000,1100000000000000000,2190000000000000000
+    ];
+    
+    const lungCapacities = [
+        30,100,300,1000,2000,5000,10000,25000,35000,50000,150000,400000,1000000,2500000,5000000,20000000,
+        60000000,300000000,1000000000,9000000000,20000000000,50000000000,400000000000,500000000000,1000000000000,
+        5555000000000,37700000000000,67500000000000,121000000000000,1050000000000000,1950000000000000,
+        3600000000000000,32000000000000000,57500000000000000,105000000000000000,1200000000000000000,
+        2150000000000000000,4150000000000000000
+    ];
+    
+    const lungs = [];
+    for (let i = 0; i < 38; i++) {
+        lungs.push({id: i+1, name: lungNames[i], price: lungPrices[i], capacity: lungCapacities[i]});
+    }
+    
+    const stages = [
+        {stage: 1, price: 2000000, multiplier: 2, display: "2M"},
+        {stage: 2, price: 150000000, multiplier: 5, display: "150M"},
+        {stage: 3, price: 5000000000, multiplier: 19, display: "5B"},
+        {stage: 4, price: 125000000000, multiplier: 99, display: "125B"},
+        {stage: 5, price: 300000000000, multiplier: 499, display: "300B"},
+        {stage: 6, price: 1000000000000, multiplier: 2999, display: "1T"}
+    ];
+    
+    function formatNumber(n) {
+        if (n >= 1e15) return (n / 1e15).toFixed(1) + "Qa";
+        if (n >= 1e12) return (n / 1e12).toFixed(1) + "T";
+        if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
+        if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+        if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+        return Math.floor(n).toString();
+    }
+    
+    function getCatColor() {
+        // Цвет кота зависит от стадии
+        const stage = playerData.stage;
+        if (stage === 0) return "#0f0";
+        if (stage === 1) return "#ff0";
+        if (stage === 2) return "#f90";
+        if (stage === 3) return "#f60";
+        if (stage === 4) return "#f0f";
+        if (stage === 5) return "#f00";
+        if (stage === 6) return "#ff0";
+        return "#0f0";
+    }
+    
+    function getCigColor() {
+        // Цвет сигареты зависит от её силы
+        const cig = playerData.cigarette === 51 ? {power: 4} : cigarettes[playerData.cigarette-1];
+        const power = cig.power;
+        if (power < 10) return "#aaa";
+        if (power < 100) return "#ff6600";
+        if (power < 1000) return "#ff0000";
+        if (power < 10000) return "#ff00ff";
+        return "#ffff00";
+    }
+    
+    function updateCatSprite() {
+        const catElement = document.getElementById('catSprite');
+        catElement.style.color = getCatColor();
+        catElement.style.textShadow = `0 0 3px ${getCigColor()}`;
+    }
+    
+    async function loadData() {
+        try {
+            const response = await fetch(`/api/player?user_id=${tg.initDataUnsafe.user.id}`);
+            if (response.ok) {
+                const data = await response.json();
+                playerData = data;
+            }
+        } catch(e) { console.log("Load error:", e); }
+        updateUI();
+        updateCatSprite();
+    }
+    
+    async function saveData() {
+        try {
+            await fetch('/api/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({user_id: tg.initDataUnsafe.user.id, data: playerData})
+            });
+        } catch(e) { console.log("Save error:", e); }
+    }
+    
+    async function clickCat() {
+        const cig = playerData.cigarette === 51 ? {power: 4} : cigarettes[playerData.cigarette-1];
+        const stageMult = playerData.stage === 0 ? 1 : stages[playerData.stage-1].multiplier;
+        const gain = cig.power * stageMult;
+        const lung = lungs[playerData.lung-1];
+        
+        if (playerData.clicks + gain > lung.capacity) {
+            showMessage("🫁 Лёгкие заполнены! Продай вдохи или купи новые лёгкие", true);
+            return;
+        }
+        
+        playerData.clicks += gain;
+        playerData.total_clicks += gain;
+        await saveData();
+        updateUI();
+        
+        // Анимация дыма
+        const cat = document.getElementById('catClicker');
+        const rect = cat.getBoundingClientRect();
+        for (let i = 0; i < 3; i++) {
+            const smoke = document.createElement('div');
+            smoke.className = 'smoke-particle';
+            smoke.textContent = '💨';
+            smoke.style.left = (rect.left + rect.width - 40 + Math.random() * 20) + 'px';
+            smoke.style.top = (rect.top + 30 + Math.random() * 30) + 'px';
+            document.body.appendChild(smoke);
+            setTimeout(() => smoke.remove(), 600);
+        }
+        
+        // Встряска кота
+        cat.style.transform = 'scale(0.97)';
+        setTimeout(() => cat.style.transform = '', 100);
+        tg.HapticFeedback.impactOccurred('light');
+    }
+    
+    async function buyCigarette(cigId) {
+        if (playerData.items_cigarettes.includes(cigId)) {
+            showMessage("🚬 У тебя уже есть эта сигарета!", true);
+            return;
+        }
+        const cig = cigarettes[cigId-1];
+        if (playerData.clicks < cig.price) {
+            showMessage(`Не хватает ${formatNumber(cig.price)} вдохов!`, true);
+            return;
+        }
+        playerData.clicks -= cig.price;
+        playerData.items_cigarettes.push(cigId);
+        if (cigId > playerData.cigarette) playerData.cigarette = cigId;
+        await saveData();
+        updateUI();
+        updateCatSprite();
+        showMessage(`✅ Куплено! ${cig.name}`, false);
+    }
+    
+    async function buyLung(lungId) {
+        if (playerData.items_lungs.includes(lungId)) {
+            showMessage("🫁 У тебя уже есть эти лёгкие!", true);
+            return;
+        }
+        const lung = lungs[lungId-1];
+        if (playerData.clicks < lung.price) {
+            showMessage(`Не хватает ${formatNumber(lung.price)} вдохов!`, true);
+            return;
+        }
+        playerData.clicks -= lung.price;
+        playerData.items_lungs.push(lungId);
+        if (lungId > playerData.lung) playerData.lung = lungId;
+        await saveData();
+        updateUI();
+        showMessage(`✅ Куплено! ${lung.name}`, false);
+    }
+    
+    async function buyStage(stageNum) {
+        if (stageNum <= playerData.stage) {
+            showMessage("🌟 Ты уже на этой стадии!", true);
+            return;
+        }
+        const stage = stages[stageNum-1];
+        if (playerData.clicks < stage.price) {
+            showMessage(`Не хватает ${stage.display} вдохов!`, true);
+            return;
+        }
+        playerData.clicks = 0;
+        playerData.stage = stageNum;
+        await saveData();
+        updateUI();
+        updateCatSprite();
+        showMessage(`🌟 Поздравляю! ${stageNum} стадия! Множитель x${stage.multiplier}`, false);
+    }
+    
+    async function sellClicks() {
+        if (playerData.clicks === 0) {
+            showMessage("💨 Нет вдохов для продажи!", true);
+            return;
+        }
+        showMessage(`💰 Продано ${formatNumber(playerData.clicks)} вдохов!`, false);
+        playerData.clicks = 0;
+        await saveData();
+        updateUI();
+    }
+    
+    async function usePromo(code) {
+        if (playerData.promo_used) {
+            showMessage("Промокод уже использован!", true);
+            return;
+        }
+        if (code.toUpperCase() === "GETTO") {
+            if (!playerData.items_cigarettes.includes(51)) {
+                playerData.items_cigarettes.push(51);
+                if (51 > playerData.cigarette) playerData.cigarette = 51;
+                playerData.promo_used = true;
+                await saveData();
+                updateUI();
+                updateCatSprite();
+                showMessage("🎁 Получена сигарета SmokingGetto! +4 к силе клика", false);
+            } else {
+                showMessage("Сигарета SmokingGetto уже у тебя есть!", true);
+            }
+        } else {
+            showMessage("Неверный промокод!", true);
+        }
+        closePromoPopup();
+    }
+    
+    function updateUI() {
+        const lung = lungs[playerData.lung-1];
+        const cig = playerData.cigarette === 51 ? {name: "🚬 SmokingGetto", power: 4} : cigarettes[playerData.cigarette-1];
+        const stageMult = playerData.stage === 0 ? 1 : stages[playerData.stage-1].multiplier;
+        const clickPower = cig.power * stageMult;
+        
+        document.getElementById('clicks').innerText = formatNumber(playerData.clicks);
+        document.getElementById('capacity').innerText = formatNumber(lung.capacity);
+        document.getElementById('totalClicks').innerText = formatNumber(playerData.total_clicks);
+        document.getElementById('clickPower').innerText = formatNumber(clickPower);
+        document.getElementById('stageMult').innerText = stageMult;
+        document.getElementById('cigName').innerText = cig.name;
+        document.getElementById('cigPower').innerText = formatNumber(cig.power);
+        document.getElementById('lungName').innerText = lung.name;
+        document.getElementById('stage').innerText = playerData.stage;
+        
+        renderShop();
+        renderLungs();
+        renderStages();
+        renderLeaderboard();
+    }
+    
+    function renderShop() {
+        const container = document.getElementById('shopList');
+        container.innerHTML = '';
+        for (let i = 0; i < cigarettes.length; i++) {
+            if (playerData.items_cigarettes.includes(cigarettes[i].id)) continue;
+            const div = document.createElement('div');
+            div.className = 'shop-item';
+            div.onclick = () => buyCigarette(cigarettes[i].id);
+            div.innerHTML = `<div class="shop-name">${cigarettes[i].name}</div>
+                             <div class="shop-price">💰 ${formatNumber(cigarettes[i].price)}</div>
+                             <div class="shop-power">⚡ +${formatNumber(cigarettes[i].power)}</div>`;
+            container.appendChild(div);
+        }
+        if (!container.children.length) container.innerHTML = '<div class="stats-text">🚬 Ты выкурил все сигареты!</div>';
+    }
+    
+    function renderLungs() {
+        const container = document.getElementById('lungsList');
+        container.innerHTML = '';
+        for (let i = 0; i < lungs.length; i++) {
+            if (playerData.items_lungs.includes(lungs[i].id)) continue;
+            const div = document.createElement('div');
+            div.className = 'shop-item';
+            div.onclick = () => buyLung(lungs[i].id);
+            div.innerHTML = `<div class="shop-name">${lungs[i].name}</div>
+                             <div class="shop-price">💰 ${formatNumber(lungs[i].price)}</div>
+                             <div class="shop-power">📦 Вместимость: ${formatNumber(lungs[i].capacity)}</div>`;
+            container.appendChild(div);
+        }
+        if (!container.children.length) container.innerHTML = '<div class="stats-text">🫁 Ты достиг предела лёгких!</div>';
+    }
+    
+    function renderStages() {
+        const container = document.getElementById('stagesList');
+        container.innerHTML = '';
+        for (let i = 0; i < stages.length; i++) {
+            if (playerData.stage >= stages[i].stage) continue;
+            const div = document.createElement('div');
+            div.className = 'shop-item';
+            div.onclick = () => buyStage(stages[i].stage);
+            div.innerHTML = `<div class="shop-name">🌟 ${stages[i].stage} стадия</div>
+                             <div class="shop-price">💰 ${stages[i].display}</div>
+                             <div class="shop-power">📈 Множитель: x${stages[i].multiplier}</div>`;
+            container.appendChild(div);
+        }
+        if (!container.children.length) container.innerHTML = '<div class="stats-text">🌟 Ты на максимальной стадии!</div>';
+    }
+    
+    async function renderLeaderboard() {
+        try {
+            const response = await fetch('/api/leaderboard');
+            if (response.ok) {
+                const data = await response.json();
+                const clicksDiv = document.getElementById('leaderboardClicks');
+                const stagesDiv = document.getElementById('leaderboardStages');
+                clicksDiv.innerHTML = '<div class="stats-text">🏆 ТОП ПО ВДОХАМ 🏆</div>';
+                data.clicks.forEach((item, idx) => {
+                    clicksDiv.innerHTML += `<div class="leaderboard-item">${idx+1}. @${item.name} — ${formatNumber(item.clicks)}</div>`;
+                });
+                stagesDiv.innerHTML = '<div class="stats-text">🌟 ТОП ПО СТАДИЯМ 🌟</div>';
+                data.stages.forEach((item, idx) => {
+                    stagesDiv.innerHTML += `<div class="leaderboard-item">${idx+1}. @${item.name} — ${item.stage} стадия</div>`;
+                });
+            }
+        } catch(e) { console.log("Leaderboard error:", e); }
+    }
+    
+    function showMessage(msg, isError) {
+        const div = document.getElementById('message');
+        div.textContent = msg;
+        div.className = isError ? 'message error' : 'message';
+        setTimeout(() => div.textContent = '', 3000);
+    }
+    
+    function showPromoPopup() { document.getElementById('promoPopup').classList.remove('hidden'); }
+    function closePromoPopup() {
+        document.getElementById('promoPopup').classList.add('hidden');
+        document.getElementById('promoCode').value = '';
+    }
+    
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.dataset.tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        });
+    });
+    
+    document.getElementById('catClicker').addEventListener('click', clickCat);
+    document.getElementById('sellBtn').addEventListener('click', sellClicks);
+    document.getElementById('promoBtn').addEventListener('click', showPromoPopup);
+    document.getElementById('promoSubmit').addEventListener('click', () => usePromo(document.getElementById('promoCode').value));
+    document.getElementById('promoClose').addEventListener('click', closePromoPopup);
+    
+    loadData();
+</script>
+</body>
+  </html>
